@@ -1,152 +1,126 @@
-Clear-Host
-$Host.UI.RawUI.WindowTitle = "EliteX Optimizer PRO"
+# ===== ADMIN CHECK =====
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
+).IsInRole([Security.Principal.WindowsBuiltinRole] "Administrator")) {
+    Write-Host "Run as Administrator!" -ForegroundColor Red
+    Pause
+    exit
+}
 
-# ===== LOGIN =====
-while ($true) {
+# ===== UI =====
+function UI {
     Clear-Host
-    Write-Host "==============================" -ForegroundColor Cyan
-    Write-Host "     EliteX Optimizer PRO"
-    Write-Host "==============================" -ForegroundColor Cyan
+    Write-Host "===================================" -ForegroundColor Cyan
+    Write-Host "     ELITEX FF OPTIMIZER PRO v4"
+    Write-Host "===================================" -ForegroundColor Cyan
+}
 
-    $user = Read-Host "Username"
-    $pass = Read-Host "Password"
-
-    if ($user -eq "elite" -and $pass -eq "1") {
-        Write-Host "Login Success!" -ForegroundColor Green
-        Start-Sleep 1
-        break
-    } else {
-        Write-Host "Wrong Login!" -ForegroundColor Red
-        Start-Sleep 1
+# ===== DETECT EMULATOR =====
+function Get-Emulator {
+    return Get-Process -ErrorAction SilentlyContinue | Where-Object {
+        $_.ProcessName -match "HD-Player|BlueStacks|Nox|LDPlayer|Android"
     }
 }
 
-# ===== FUNCTIONS =====
-function FPS-Boost {
-    Write-Host "FPS Boost..." -ForegroundColor Yellow
-    Remove-Item "$env:TEMP\*" -Recurse -Force -ErrorAction SilentlyContinue
+# ===== BOOST =====
+function Boost {
+    UI
+    Write-Host "Detecting Emulator..." -ForegroundColor Yellow
+
+    $emu = Get-Emulator
+
+    if ($emu) {
+        foreach ($p in $emu) {
+            try {
+                $p.PriorityClass = "High"
+                Write-Host "$($p.ProcessName) => Boosted" -ForegroundColor Green
+            } catch {}
+        }
+    } else {
+        Write-Host "No Emulator Running!" -ForegroundColor Red
+    }
+
+    # Network latency tweak (safe)
     ipconfig /flushdns | Out-Null
-    Stop-Service SysMain -Force -ErrorAction SilentlyContinue
-    Write-Host "Done!" -ForegroundColor Green
+
+    Write-Host "Boost Applied!" -ForegroundColor Green
     Pause
 }
 
-function Aim-Optimize {
-    Write-Host "Aim Optimize..." -ForegroundColor Yellow
-    Set-ItemProperty "HKCU:\Control Panel\Mouse" MouseSpeed 0
-    Set-ItemProperty "HKCU:\Control Panel\Mouse" MouseThreshold1 0
-    Set-ItemProperty "HKCU:\Control Panel\Mouse" MouseThreshold2 0
-    Write-Host "Done!" -ForegroundColor Green
-    Pause
-}
+# ===== CLEAN =====
+function Clean {
+    UI
+    Write-Host "Cleaning Background Apps..." -ForegroundColor Yellow
 
-function Clean-System {
-    Write-Host "Cleaning..." -ForegroundColor Yellow
+    $apps = "OneDrive","YourPhone","Teams"
+    foreach ($a in $apps) {
+        Stop-Process -Name $a -Force -ErrorAction SilentlyContinue
+    }
+
     Remove-Item "$env:TEMP\*" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item "C:\Windows\Temp\*" -Recurse -Force -ErrorAction SilentlyContinue
-    Write-Host "Done!" -ForegroundColor Green
+
+    Write-Host "Clean Done!" -ForegroundColor Green
     Pause
 }
 
-function Gaming-On {
-    FPS-Boost
-    Aim-Optimize
-    Write-Host "Gaming Mode ON!" -ForegroundColor Green
+# ===== GAME MODE =====
+function GameMode {
+    UI
+    Write-Host "Activating Gaming Mode..." -ForegroundColor Yellow
+
+    powercfg -setactive SCHEME_MIN
+
+    reg add "HKCU\System\GameConfigStore" /v GameDVR_Enabled /t REG_DWORD /d 0 /f | Out-Null
+
+    Boost
+
+    Write-Host "Gaming Mode ON" -ForegroundColor Green
     Pause
 }
 
-function Gaming-Off {
-    Start-Service SysMain -ErrorAction SilentlyContinue
+# ===== EXTREME (SAFE VERSION) =====
+function Extreme {
+    UI
+    Write-Host "EXTREME MODE (SAFE)" -ForegroundColor Red
+
+    Stop-Process OneDrive -Force -ErrorAction SilentlyContinue
+    Stop-Process Teams -Force -ErrorAction SilentlyContinue
+
+    powercfg -setactive SCHEME_MIN
+
+    Boost
+
+    Write-Host "Extreme Boost Done!" -ForegroundColor Green
+    Pause
+}
+
+# ===== RESTORE =====
+function Restore {
+    UI
     powercfg -setactive SCHEME_BALANCED
+
     Write-Host "Normal Mode Restored!" -ForegroundColor Green
     Pause
 }
 
-function Detect-Boost {
-    Write-Host "Detecting Game..." -ForegroundColor Yellow
-
-    $mc = Get-Process javaw -ErrorAction SilentlyContinue
-    if ($mc) { $mc.PriorityClass="High"; Write-Host "Minecraft Boosted!" }
-
-    $valo = Get-Process VALORANT-Win64-Shipping -ErrorAction SilentlyContinue
-    if ($valo) { $valo.PriorityClass="High"; Write-Host "Valorant Boosted!" }
-
-    Pause
-}
-
-function Extreme-Boost {
-    Write-Host "EXTREME MODE..." -ForegroundColor Red
-    Stop-Process OneDrive -Force -ErrorAction SilentlyContinue
-    Stop-Process YourPhone -Force -ErrorAction SilentlyContinue
-    Stop-Service SysMain -Force -ErrorAction SilentlyContinue
-    powercfg -setactive SCHEME_MIN
-    Write-Host "EXTREME DONE!" -ForegroundColor Green
-    Pause
-}
-
-function Backup {
-    reg export "HKCU\Control Panel\Mouse" backup_mouse.reg /y | Out-Null
-    Write-Host "Backup Saved!" -ForegroundColor Green
-    Pause
-}
-
-function Restore {
-    if (Test-Path "backup_mouse.reg") { reg import backup_mouse.reg }
-    Write-Host "Restored!" -ForegroundColor Green
-    Pause
-}
-
-function Network-Reset {
-    netsh winsock reset | Out-Null
-    ipconfig /flushdns | Out-Null
-    Write-Host "Network Reset Done!" -ForegroundColor Green
-    Pause
-}
-
-function Auto-Boost {
-    Write-Host "Auto Boost Running... (CTRL+C to stop)" -ForegroundColor Cyan
-    while ($true) {
-        Start-Sleep 5
-
-        if (Get-Process javaw -ErrorAction SilentlyContinue) { Extreme-Boost }
-        if (Get-Process VALORANT-Win64-Shipping -ErrorAction SilentlyContinue) { Extreme-Boost }
-    }
-}
-
-# ===== MENU LOOP =====
+# ===== MENU =====
 while ($true) {
-    Clear-Host
-    Write-Host "==============================" -ForegroundColor Green
-    Write-Host "     EliteX Optimizer"
-    Write-Host "==============================" -ForegroundColor Green
+    UI
 
-    Write-Host "1. FPS Boost"
-    Write-Host "2. Aim Optimize"
-    Write-Host "3. Deep Clean"
-    Write-Host "4. Gaming Mode ON"
-    Write-Host "5. Gaming Mode OFF"
-    Write-Host "6. Auto Detect Boost"
-    Write-Host "7. EXTREME Boost"
-    Write-Host "8. Backup"
-    Write-Host "9. Restore"
-    Write-Host "10. Network Reset"
-    Write-Host "11. Auto Boost Mode"
-    Write-Host "12. Exit"
+    Write-Host "1. Boost Emulator"
+    Write-Host "2. Clean System"
+    Write-Host "3. Gaming Mode"
+    Write-Host "4. EXTREME Mode"
+    Write-Host "5. Restore Normal"
+    Write-Host "6. Exit"
 
     $c = Read-Host "Select"
 
     switch ($c) {
-        "1" { FPS-Boost }
-        "2" { Aim-Optimize }
-        "3" { Clean-System }
-        "4" { Gaming-On }
-        "5" { Gaming-Off }
-        "6" { Detect-Boost }
-        "7" { Extreme-Boost }
-        "8" { Backup }
-        "9" { Restore }
-        "10" { Network-Reset }
-        "11" { Auto-Boost }
-        "12" { break }
+        "1" { Boost }
+        "2" { Clean }
+        "3" { GameMode }
+        "4" { Extreme }
+        "5" { Restore }
+        "6" { break }
     }
 }
